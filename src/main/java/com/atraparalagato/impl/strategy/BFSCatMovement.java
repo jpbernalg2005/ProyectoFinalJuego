@@ -27,57 +27,65 @@ public class BFSCatMovement extends CatMovementStrategy<HexPosition> {
     
     @Override
     protected List<HexPosition> getPossibleMoves(HexPosition currentPosition) {
-        // TODO: Obtener todas las posiciones adyacentes válidas
-        // Filtrar posiciones bloqueadas y fuera de límites
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getPossibleMoves");
+        // Devuelve posiciones adyacentes no bloqueadas
+        List<HexPosition> adjacents = board.getAdjacentPositions(currentPosition);
+        List<HexPosition> valid = new ArrayList<>();
+        for (HexPosition pos : adjacents) {
+            if (!board.isBlocked(pos)) {
+                valid.add(pos);
+            }
+        }
+        return valid;
     }
     
     @Override
     protected Optional<HexPosition> selectBestMove(List<HexPosition> possibleMoves, 
                                                   HexPosition currentPosition, 
                                                   HexPosition targetPosition) {
-        // TODO: Usar BFS para encontrar el mejor movimiento
-        // 1. Ejecutar BFS desde cada posible movimiento
-        // 2. Evaluar cuál lleva más rápido al objetivo
-        // 3. Retornar el primer paso del mejor camino
-        throw new UnsupportedOperationException("Los estudiantes deben implementar selectBestMove");
+        // Elige el movimiento cuyo camino BFS al objetivo sea más corto
+        HexPosition bestMove = null;
+        int minLength = Integer.MAX_VALUE;
+        for (HexPosition move : possibleMoves) {
+            List<HexPosition> path = bfsToGoal(move).orElse(Collections.emptyList());
+            if (!path.isEmpty() && path.size() < minLength) {
+                minLength = path.size();
+                bestMove = move;
+            }
+        }
+        return Optional.ofNullable(bestMove);
     }
     
     @Override
     protected Function<HexPosition, Double> getHeuristicFunction(HexPosition targetPosition) {
-        // TODO: BFS no necesita heurística, pero puede usarse para desempate
-        // Retornar función que calcule distancia euclidiana o Manhattan
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getHeuristicFunction");
+        // BFS no usa heurística, pero devolvemos distancia para desempate si se requiere
+        return pos -> (double) pos.distanceTo(targetPosition);
     }
     
     @Override
     protected Predicate<HexPosition> getGoalPredicate() {
-        // TODO: Definir condición de objetivo (llegar al borde)
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getGoalPredicate");
+        // El objetivo es llegar al borde del tablero
+        int size = board.getSize();
+        return pos -> Math.abs(pos.getQ()) == size ||
+                      Math.abs(pos.getR()) == size ||
+                      Math.abs(pos.getS()) == size;
     }
     
     @Override
     protected double getMoveCost(HexPosition from, HexPosition to) {
-        // TODO: BFS usa costo uniforme (1.0 para movimientos adyacentes)
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getMoveCost");
+        // Costo uniforme para BFS
+        return 1.0;
     }
     
     @Override
     public boolean hasPathToGoal(HexPosition currentPosition) {
-        // TODO: Implementar BFS para verificar si existe camino al objetivo
-        // 1. Usar cola para exploración por niveles
-        // 2. Marcar posiciones visitadas
-        // 3. Retornar true si se encuentra el objetivo
-        throw new UnsupportedOperationException("Los estudiantes deben implementar hasPathToGoal");
+        // Usa BFS para verificar si hay camino al borde
+        return bfsToGoal(currentPosition).isPresent();
     }
     
     @Override
     public List<HexPosition> getFullPath(HexPosition currentPosition, HexPosition targetPosition) {
-        // TODO: Implementar BFS completo para encontrar camino
-        // 1. Usar cola con información de camino
-        // 2. Reconstruir camino desde objetivo hasta inicio
-        // 3. Retornar camino completo
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getFullPath");
+        // Usa BFS para encontrar el camino más corto al objetivo
+        return bfsToGoal(currentPosition).orElse(Collections.emptyList());
     }
     
     // Métodos auxiliares que los estudiantes pueden implementar
