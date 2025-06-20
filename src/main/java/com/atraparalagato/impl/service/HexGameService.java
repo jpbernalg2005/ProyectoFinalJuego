@@ -4,13 +4,18 @@ import com.atraparalagato.base.service.GameService;
 import com.atraparalagato.base.model.GameState;
 import com.atraparalagato.base.model.GameBoard;
 import com.atraparalagato.base.strategy.CatMovementStrategy;
+import com.atraparalagato.example.model.ExampleGameBoard;
+import com.atraparalagato.example.model.ExampleGameState;
+import com.atraparalagato.example.strategy.SimpleCatMovement;
 import com.atraparalagato.impl.model.HexPosition;
+import com.atraparalagato.impl.repository.H2GameRepository;
 import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexGameBoard;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+
+
+
 
 /**
  * Implementación esqueleto de GameService para el juego hexagonal.
@@ -25,10 +30,10 @@ import java.util.Optional;
  * - Integración con repositorio y estrategias
  */
 public class HexGameService extends GameService<HexPosition> {
-    
+    //DataRepository<HexGameState, String> repo = new H2GameRepository();
     // TODO: Los estudiantes deben inyectar dependencias
     // Ejemplos: repository, movementStrategy, validator, etc.
-    
+    private final H2GameRepository repo = new H2GameRepository();
     public HexGameService() {
         // TODO: Los estudiantes deben inyectar las dependencias requeridas
         super(
@@ -49,32 +54,51 @@ public class HexGameService extends GameService<HexPosition> {
      * Debe ser más sofisticado que ExampleGameService.
      */
     public HexGameState createGame(int boardSize, String difficulty, Map<String, Object> options) {
-        // TODO: Implementar creación de juego avanzada
-        // Considerar:
-        // 1. Validar parámetros de entrada
-        // 2. Crear tablero según dificultad
-        // 3. Configurar estrategia del gato según dificultad
-        // 4. Inicializar estado del juego
-        // 5. Guardar en repositorio
-        // 6. Configurar callbacks y eventos
-        throw new UnsupportedOperationException("Los estudiantes deben implementar createGame");
+        String gameId = UUID.randomUUID().toString();
+        HexGameState gameState = new HexGameState(gameId, boardSize);
+        
+        // Configurar callbacks básicos
+        gameState.setOnStateChanged(this::onGameStateChanged);
+        gameState.setOnGameEnded(this::onGameEnded);
+        
+        // Guardar el estado inicial
+        repo.save(gameState);
+        
+        System.out.println("🎮 Nuevo juego iniciado: " + gameId);
+        return gameState;
     }
     
     /**
      * TODO: Ejecutar movimiento del jugador con validaciones avanzadas.
      */
     public Optional<HexGameState> executePlayerMove(String gameId, HexPosition position, String playerId) {
-        // TODO: Implementar movimiento del jugador
-        // Considerar:
-        // 1. Validar que el juego existe y está activo
-        // 2. Validar que el jugador puede hacer el movimiento
-        // 3. Validar la posición según reglas del juego
-        // 4. Ejecutar el movimiento
-        // 5. Mover el gato usando estrategia apropiada
-        // 6. Actualizar estado del juego
-        // 7. Guardar cambios en repositorio
-        // 8. Notificar eventos
-        throw new UnsupportedOperationException("Los estudiantes deben implementar executePlayerMove");
+       Optional<HexGameState> gameStateOpt = repo.findById(gameId);
+        
+        if (gameStateOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        
+        HexGameState gameState = gameStateOpt.get();
+        
+        // Validar movimiento
+        if (!isValidMove(gameState.getGameId(), position)) {
+            return Optional.of(gameState);
+        }
+        
+        // Ejecutar movimiento del jugador
+        if (!gameState.executeMove(position)) {
+            return Optional.of(gameState);
+        }
+        
+        System.out.println("👤 Jugador bloqueó posición: " + position + " (Movimiento #" + gameState.getMoveCount() + ")");
+        
+        // Mover el gato después del movimiento del jugador
+        executeCatMove(gameState);
+        
+        // Guardar estado actualizado
+        repo.save(gameState);
+        
+        return Optional.of(gameState);
     }
     
     /**
@@ -196,7 +220,23 @@ public class HexGameService extends GameService<HexPosition> {
      * TODO: Ejecutar movimiento del gato usando estrategia apropiada.
      */
     private void executeCatMove(HexGameState gameState, String difficulty) {
-        throw new UnsupportedOperationException("Método auxiliar para implementar");
+        HexPosition currentPosition = gameState.getCatPosition();
+        HexGameBoard board = gameState.getGameBoard();
+        
+        // Crear estrategia de movimiento simple
+        SimpleCatMovement strategy = new SimpleCatMovement(board);
+        
+        // Objetivo: cualquier posición en el borde del tablero
+        HexPosition targetPosition = new HexPosition(gameState.getBoardSize(), 0);
+        
+        Optional<HexPosition> nextMove = strategy.findBestMove(currentPosition, targetPosition);
+        
+        if (nextMove.isPresent()) {
+            gameState.setCatPosition(nextMove.get());
+            System.out.println("🐱 Gato se movió a: " + nextMove.get());
+        } else {
+            System.out.println("🐱 ¡Gato no puede moverse! Está atrapado.");
+        }
     }
     
     /**
@@ -230,14 +270,35 @@ public class HexGameService extends GameService<HexPosition> {
     
     @Override
     public boolean isValidMove(String gameId, HexPosition position) {
-        // TODO: Validar si un movimiento es válido
-        throw new UnsupportedOperationException("Los estudiantes deben implementar isValidMove");
+        Optional<HexGameState> gameStateOpt = repo.findById(gameId);
+        if (gameStateOpt.isEmpty()) return false;
+        HexGameState gameState = gameStateOpt.get();
+
+        if (gameState.isGameFinished()) return false;
+        if (position.equals(gameState.getCatPosition())) return false;
+
+        HexGameBoard board = gameState.getGameBoard();
+        return board.isPositionInBounds(position) && !board.isBlocked(position);
     }
     
     @Override
     public Optional<HexPosition> getSuggestedMove(String gameId) {
-        // TODO: Obtener sugerencia de movimiento
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getSuggestedMove");
+        Optional<HexGameState> gameStateOpt = repo.findById(gameId);
+        
+        if (gameStateOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        
+        HexGameState gameState = gameStateOpt.get();
+        HexPosition catPosition = gameState.getCatPosition();
+        HexGameBoard board = gameState.getGameBoard();
+        
+        // Sugerencia simple: bloquear una posición adyacente al gato
+        List<HexPosition> adjacentToCat = board.getAdjacentPositions(catPosition);
+        
+        return adjacentToCat.stream()
+                .filter(pos -> !board.isBlocked(pos))
+                .findFirst();
     }
     
     @Override
@@ -248,7 +309,31 @@ public class HexGameService extends GameService<HexPosition> {
     
     @Override
     public Object getGameStatistics(String gameId) {
-        // TODO: Obtener estadísticas del juego
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getGameStatistics");
+        Optional<HexGameState> gameStateOpt = repo.findById(gameId);
+        
+        if (gameStateOpt.isEmpty()) {
+            return Map.of("error", "Game not found");
+        }
+        
+        HexGameState gameState = gameStateOpt.get();
+        
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("gameId", gameState.getGameId());
+        stats.put("status", gameState.getStatus().toString());
+        stats.put("moveCount", gameState.getMoveCount());
+        stats.put("isFinished", gameState.isGameFinished());
+        stats.put("playerWon", gameState.hasPlayerWon());
+        stats.put("score", gameState.calculateScore());
+        stats.put("createdAt", gameState.getCreatedAt());
+        stats.put("boardSize", gameState.getBoardSize());
+        stats.put("catPosition", Map.of(
+            "q", gameState.getCatPosition().getQ(),
+            "r", gameState.getCatPosition().getR()
+        ));
+        
+        // Estadísticas del tablero
+        stats.put("boardStats", gameState.getGameBoard().getBoardStatistics());
+        
+        return stats;
     }
 } 

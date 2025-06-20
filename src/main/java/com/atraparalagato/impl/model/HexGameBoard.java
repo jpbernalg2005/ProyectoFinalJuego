@@ -29,7 +29,7 @@ public class HexGameBoard extends GameBoard<HexPosition> {
     }
     
     @Override
-    protected boolean isPositionInBounds(HexPosition position) {
+    public boolean isPositionInBounds(HexPosition position) {
         return Math.abs(position.getQ()) <= size && 
                 Math.abs(position.getR()) <= size && 
                 Math.abs(position.getS()) <= size;
