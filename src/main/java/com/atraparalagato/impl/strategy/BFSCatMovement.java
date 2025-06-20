@@ -81,26 +81,53 @@ public class BFSCatMovement extends CatMovementStrategy<HexPosition> {
     }
     
     // Métodos auxiliares que los estudiantes pueden implementar
-    
+
     /**
-     * TODO: Ejecutar BFS desde una posición hasta encontrar objetivo.
+     * Ejecutar BFS desde una posición hasta encontrar objetivo.
      */
     private Optional<List<HexPosition>> bfsToGoal(HexPosition start) {
-        throw new UnsupportedOperationException("Método auxiliar para implementar");
+        Set<HexPosition> visited = new HashSet<>();
+        Queue<HexPosition> queue = new LinkedList<>();
+        Map<HexPosition, HexPosition> parentMap = new HashMap<>();
+
+        queue.offer(start);
+        visited.add(start);
+        parentMap.put(start, null);
+
+        Predicate<HexPosition> goalPredicate = getGoalPredicate();
+
+        while (!queue.isEmpty()) {
+            HexPosition current = queue.poll();
+
+            if (goalPredicate.test(current)) {
+                // Reconstruir camino desde start hasta current
+                return Optional.of(reconstructPath(parentMap, start, current));
+            }
+
+            for (HexPosition neighbor : board.getAdjacentPositions(current)) {
+                if (!visited.contains(neighbor) && !board.isBlocked(neighbor)) {
+                    visited.add(neighbor);
+                    parentMap.put(neighbor, current);
+                    queue.offer(neighbor);
+                }
+            }
+        }
+        return Optional.empty(); // No se encontró camino
     }
-    
+
     /**
-     * TODO: Reconstruir camino desde mapa de padres.
+     * Reconstruir camino desde mapa de padres.
      */
     private List<HexPosition> reconstructPath(Map<HexPosition, HexPosition> parentMap, 
                                             HexPosition start, HexPosition goal) {
-        throw new UnsupportedOperationException("Método auxiliar para implementar");
+        List<HexPosition> path = new ArrayList<>();
+        HexPosition current = goal;
+        while (current != null) {
+            path.add(current);
+            current = parentMap.get(current);
+        }
+        Collections.reverse(path);
+        return path;
     }
-    
-    /**
-     * TODO: Evaluar calidad de un camino encontrado.
-     */
-    private double evaluatePathQuality(List<HexPosition> path) {
-        throw new UnsupportedOperationException("Método auxiliar para implementar");
-    }
-} 
+
+}

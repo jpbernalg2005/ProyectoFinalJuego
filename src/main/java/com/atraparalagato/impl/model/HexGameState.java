@@ -156,7 +156,18 @@ public class HexGameState extends GameState<HexPosition> {
     }
     
     public Map<String, Object> getAdvancedStatistics() {
-        throw new UnsupportedOperationException("Método adicional para implementar");
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("gameId", getGameId());
+        stats.put("boardSize", boardSize);
+        stats.put("moveCount", getMoveCount());
+        stats.put("catPosition", Map.of("q", catPosition.getQ(), "r", catPosition.getR(), "s", catPosition.getS()));
+        stats.put("blockedCells", gameBoard.getBlockedPositions().size());
+        stats.put("isCatAtBorder", isCatAtBorder());
+        stats.put("isCatTrapped", isCatTrapped());
+        stats.put("status", getStatus().toString());
+        stats.put("playerWon", hasPlayerWon());
+        stats.put("score", calculateScore());
+        return stats;    
     }
     
     // Getters adicionales que pueden ser útiles
