@@ -4,6 +4,7 @@ import com.atraparalagato.base.service.GameService;
 import com.atraparalagato.base.model.GameState;
 import com.atraparalagato.base.model.GameBoard;
 import com.atraparalagato.base.strategy.CatMovementStrategy;
+import com.atraparalagato.base.repository.DataRepository;
 import com.atraparalagato.example.strategy.SimpleCatMovement;
 import com.atraparalagato.impl.strategy.AStarCatMovement;
 import com.atraparalagato.impl.strategy.BFSCatMovement;
@@ -37,11 +38,12 @@ public class HexGameService extends GameService<HexPosition> {
     private final H2GameRepository repo = new H2GameRepository();
     private final Set<String> pausedGames = new HashSet<>();
 
+    @SuppressWarnings("unchecked")
     public HexGameService() {
         super(
             new HexGameBoard(DEFAULT_BOARD_SIZE),
             new SimpleCatMovement(new HexGameBoard(DEFAULT_BOARD_SIZE)),
-            new H2GameRepository(),
+            (DataRepository<GameState<HexPosition>, String>) (DataRepository<?>) new H2GameRepository(),
             () -> UUID.randomUUID().toString(),
             HexGameBoard::new,
             id -> new HexGameState(id, DEFAULT_BOARD_SIZE)
